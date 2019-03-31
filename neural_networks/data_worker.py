@@ -20,8 +20,9 @@ import cv2
 import numpy as np
 from pycocotools.coco import COCO
 from keras.preprocessing.image import ImageDataGenerator
+from sklearn.model_selection import train_test_split
 
-from utils import resize_pad
+from utils.utils import resize_pad
 
 class DataWorker:
     """Using for loading ms coco dataset (only train and val parts),
@@ -36,11 +37,13 @@ class DataWorker:
     category_name = 'person'
     category_id = 1
 
-    def __init__(self, data_path):
+    def __init__(self, data_path, seed=7):
         """Read images description and annotations about it
 
         :data_path (str): path to dataset's folder
+        :seed (int): random seed
         """
+        self.seed = seed
         if os.path.islink(data_path):
             data_path = os.readlink(data_path)
         self.data_path = data_path
@@ -78,6 +81,8 @@ class DataWorker:
                 )
             ) for img_desc in self.test_images
         }
+        
+        self.train_images, self.val_images = train_test_split(self.train_images, test_size=0.2)
 
     @property
     def train_shape(self):
@@ -86,6 +91,14 @@ class DataWorker:
         :return (int): return train shape
         """
         return len(self.train_images)
+    
+    @property
+    def val_shape(self):
+        """Return test shape
+
+        :return (int): return test shape
+        """
+        return len(self.val_images)
 
     @property
     def test_shape(self):
@@ -142,13 +155,12 @@ class DataWorker:
                 masks = np.append(masks, [shaped_mask], axis=0)
             yield (images, masks)
 
-    def batch_augmentation(self, image_generator, augment_args, seed):
+    def batch_augmentation(self, image_generator, augment_args):
         """Augmentate batch of images
 
         :image_generator (generator): generator with batches of images
         tuple of [batch_size, height, width, 3] and [batch_size, height, width]
         :augment_args (dict): params for augmentation
-        :seed (int): random seed
 
         :return (generator): generator with batches of augmented images
         tuple of [batch_size, height, width, 3] and [batch_size, height, width]
@@ -156,15 +168,15 @@ class DataWorker:
         augment = ImageDataGenerator(**augment_args)
         for images, masks in image_generator:
             stacked = np.concatenate([images, masks[:, :, :, np.newaxis]], axis=-1)
-            aug_batch = augment.flow(stacked, seed=seed, batch_size=stacked.shape[0],
+            aug_batch = augment.flow(stacked, seed=self.seed, batch_size=stacked.shape[0],
                                      shuffle=False)
             for aug_stacked in aug_batch:
                 aug_images = aug_stacked[:, :, :, :3].astype(np.uint8)
-                aug_masks = aug_stacked[:, :, :, 3]
+                aug_masks = aug_stacked[:, :, :, 3][:, :, :, np.newaxis]
                 yield (aug_images, aug_masks)
 
     def batch_generator(self, images_descriptions, batch_size=100, height=512, width=512,
-                        augment_args=None, seed=None):
+                        augment_args=None):
         """Pipeline, which take image description and proccessing information,
         Load it by batches, augmented and normalize
 
@@ -173,7 +185,6 @@ class DataWorker:
         :height (int): height of proccessed images
         :width (int): width of proccesses images
         :augment_args (dict): params for augmentation
-        :seed (int): random seed
 
         :return (generator): generator with batches of images
         tuple of [batch_size, height, width, 3] and [batch_size, height, width]
@@ -186,7 +197,7 @@ class DataWorker:
             }
         batch_gen = self.batch_augmentation(
             self.batch_loader(images_descriptions, batch_size, height, width),
-            augment_args, seed
+            augment_args
         )
         for images, masks in batch_gen:
             yield (images.astype(np.float32) / 255., masks)
