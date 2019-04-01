@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context=".MainActivity">
+    <Button
+            android:text="@string/load_image"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/load_image"
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginStart="8dp" android:layout_marginTop="8dp" app:layout_constraintTop_toTopOf="parent"
+    />
+    <Button
+            android:text="@string/process_image"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/process_image"
+            android:layout_marginTop="8dp"
+            app:layout_constraintTop_toBottomOf="@+id/load_image" app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginStart="8dp"/>
+    <ScrollView
+            android:layout_width="0dp"
+            android:layout_height="0dp" android:layout_marginTop="8dp"
+            app:layout_constraintTop_toBottomOf="@+id/process_image" app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginStart="8dp" app:layout_constraintEnd_toEndOf="parent" android:layout_marginEnd="8dp"
+            android:layout_marginBottom="8dp" app:layout_constraintBottom_toBottomOf="parent"
+            android:id="@+id/scrollView2">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                      android:orientation="vertical">
+            <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:id="@+id/original_image"
+                    android:contentDescription="@string/original_image"
+                    android:layout_marginBottom="8dp" android:adjustViewBounds="true" android:scaleType="centerInside"/>
+            <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:id="@+id/processed_image"
+                    android:contentDescription="@string/processed_image"
+                    android:adjustViewBounds="true"
+                    android:layout_marginBottom="8dp" android:scaleType="centerInside"/>
+        </LinearLayout>
+    </ScrollView>
+    <Spinner
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:id="@+id/spinner"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginEnd="8dp" android:layout_marginTop="8dp" app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/process_image" android:layout_marginStart="8dp"
+            android:layout_marginBottom="8dp" app:layout_constraintBottom_toTopOf="@+id/scrollView2"/>
+</android.support.constraint.ConstraintLayout>

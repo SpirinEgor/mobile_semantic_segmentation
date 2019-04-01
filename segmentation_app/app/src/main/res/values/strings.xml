@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">segmentation</string>
+    <string name="load_image">load image</string>
+    <string name="original_image">original image</string>
+    <string name="choose_image_source">Select image</string>
+    <string name="select_from_gallery">Select photo from gallery</string>
+    <string name="capture_from_camera">Capture photo from camera</string>
+    <string name="process_image">process image</string>
+    <string name="processed_image">processed image</string>
+</resources>
