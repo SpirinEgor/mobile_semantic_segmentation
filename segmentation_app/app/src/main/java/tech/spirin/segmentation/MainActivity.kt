@@ -10,8 +10,12 @@ import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.widget.*
+import tech.spirin.segmentation.dnn.DNN
+import tech.spirin.segmentation.dnn.DeepLabV3
 import java.io.IOException
 import java.util.*
+
+
 
 
 class MainActivity : AppCompatActivity() {
@@ -27,7 +31,7 @@ class MainActivity : AppCompatActivity() {
     private val RESULT_GALLERY = 1
     private val RESULT_CAMERA = 2
 
-    private val availableDNN = arrayOf("FCN-8s", "FCN-16s", "FCN-32s")
+    private val availableDNN = arrayOf<DNN>(DeepLabV3())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,13 +52,14 @@ class MainActivity : AppCompatActivity() {
             if (currentImage == null) {
                 Toast.makeText(this, "Select image before process it", Toast.LENGTH_SHORT).show()
             } else {
-                processedImageView.setImageBitmap(currentImage)
-                Toast.makeText(this, availableDNN[spinner.selectedItemPosition], Toast.LENGTH_SHORT).show()
+                val selectedDNN = spinner.selectedItemPosition
+                val mask = availableDNN[selectedDNN].process(currentImage!!)
+                processedImageView.setImageBitmap(mask)
             }
         }
 
         val spinnerAdapter = ArrayAdapter(
-            this, android.R.layout.simple_spinner_item, availableDNN
+            this, android.R.layout.simple_spinner_item, availableDNN.map { it.name }
         )
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinner.adapter = spinnerAdapter
