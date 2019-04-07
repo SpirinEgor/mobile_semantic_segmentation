@@ -11,7 +11,7 @@ import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.widget.*
 import tech.spirin.segmentation.dnn.DNN
-import tech.spirin.segmentation.dnn.DeepLabV3
+import tech.spirin.segmentation.dnn.DeepLabV3GPU
 import java.io.IOException
 import java.util.*
 
@@ -24,14 +24,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var processImageButton: Button
     private lateinit var originalImageView: ImageView
     private lateinit var processedImageView: ImageView
+    private lateinit var blendedImageView: ImageView
     private lateinit var spinner: Spinner
+    private lateinit var timeTextView: TextView
 
     private var currentImage: Bitmap? = null
 
     private val RESULT_GALLERY = 1
     private val RESULT_CAMERA = 2
 
-    private val availableDNN = arrayOf<DNN>(DeepLabV3())
+    private lateinit var availableDNN: Array<DNN>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,7 +45,12 @@ class MainActivity : AppCompatActivity() {
         processImageButton = findViewById(R.id.process_image)
         originalImageView = findViewById(R.id.original_image)
         processedImageView = findViewById(R.id.processed_image)
+        blendedImageView = findViewById(R.id.blended_image)
         spinner = findViewById(R.id.spinner)
+        timeTextView = findViewById(R.id.time)
+
+        availableDNN = arrayOf(DeepLabV3GPU(this.assets))
+        availableDNN.map { it.initialize() }
 
         loadImageButton.setOnClickListener {
             showSelectImageDialog()
@@ -53,8 +60,11 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Select image before process it", Toast.LENGTH_SHORT).show()
             } else {
                 val selectedDNN = spinner.selectedItemPosition
-                val mask = availableDNN[selectedDNN].process(currentImage!!)
-                processedImageView.setImageBitmap(mask)
+                val result = availableDNN[selectedDNN].process(currentImage!!)
+                processedImageView.setImageBitmap(result.first)
+                timeTextView.text = "${result.second} ms"
+                val blendImage = blendImages(currentImage!!, result.first)
+                blendedImageView.setImageBitmap(blendImage)
             }
         }
 
