@@ -7,4 +7,5 @@
     <string name="capture_from_camera">Capture photo from camera</string>
     <string name="process_image">process image</string>
     <string name="processed_image">processed image</string>
+    <string name="time_measure">model work in %1$d ms</string>
 </resources>

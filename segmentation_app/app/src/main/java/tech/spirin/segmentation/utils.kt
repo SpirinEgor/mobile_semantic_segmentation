@@ -3,7 +3,9 @@ package tech.spirin.segmentation
 import android.Manifest
 import android.app.Activity
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
 import android.util.Log
 import android.widget.Toast
 import com.karumi.dexter.Dexter
@@ -50,42 +52,12 @@ fun requestMultiplePermissions(activity: Activity) {
 }
 
 fun blendImages(background: Bitmap, foreground: Bitmap): Bitmap {
-    val buffBase = IntBuffer.allocate(background.width * background.height)
-    background.copyPixelsToBuffer(buffBase)
-    buffBase.rewind()
-
-    val buffBlend = IntBuffer.allocate(foreground.width * foreground.height)
-    foreground.copyPixelsToBuffer(buffBlend)
-    buffBlend.rewind()
-
-    val buffOut = IntBuffer.allocate(background.width * background.height)
-    buffOut.rewind()
-
-    while (buffOut.position() < buffOut.limit()) {
-        val filterInt = buffBlend.get()
-        val srcInt = buffBase.get()
-
-        val redValueFilter = Color.red(filterInt)
-        val greenValueFilter = Color.green(filterInt)
-        val blueValueFilter = Color.blue(filterInt)
-
-        val redValueSrc = Color.red(srcInt)
-        val greenValueSrc = Color.green(srcInt)
-        val blueValueSrc = Color.blue(srcInt)
-
-        val redValueFinal = mixColors(redValueFilter, redValueSrc)
-        val greenValueFinal = mixColors(greenValueFilter, greenValueSrc)
-        val blueValueFinal = mixColors(blueValueFilter, blueValueSrc)
-
-        val pixel = Color.argb(255, redValueFinal, greenValueFinal, blueValueFinal)
-
-        buffOut.put(pixel)
-    }
-
-    buffOut.rewind()
-
     val result = Bitmap.createBitmap(background.width, background.height, Bitmap.Config.ARGB_8888)
-    result.copyPixelsFromBuffer(buffOut)
+    val canvas = Canvas(result)
+    val paint = Paint()
+    paint.alpha = 127
+    canvas.drawBitmap(background, 0f, 0f, paint)
+    canvas.drawBitmap(foreground, 0f, 0f, paint)
     return result
 }
 

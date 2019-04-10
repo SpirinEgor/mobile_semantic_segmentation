@@ -3,17 +3,27 @@ package tech.spirin.segmentation.dnn
 import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.util.Log
 import org.tensorflow.lite.Interpreter
 import org.tensorflow.lite.experimental.GpuDelegate
-
-
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 class DeepLabV3GPU(assetManager: AssetManager) : DNN(assetManager) {
 
-    override val assetsPath = "DeepLab_GPU/deeplabv3_257_mv_gpu.tflite"
-    override val name = "DeepLab v3 GPU"
+    override val assetsPath = "DeepLab_257_GPU/deeplabv3_257_mv_gpu.tflite"
+    override val name = "DeepLab v3 257 GPU"
     override val inputShape = intArrayOf(1, 257, 257, 3)
     override val outputShape = intArrayOf(1, 257, 257, 21)
+
+    private val imageMean = 128f
+    private val imageStd = 128f
+
+    private lateinit var model: Interpreter
+
+    private lateinit var inputData: ByteBuffer
+    private lateinit var outputData: ByteBuffer
+    private val bytesPerPoint = 4
 
     private val labelColors = arrayOf(
         "background" to Color.rgb(0, 0, 0),
@@ -43,46 +53,54 @@ class DeepLabV3GPU(assetManager: AssetManager) : DNN(assetManager) {
         val delegate = GpuDelegate()
         val options = Interpreter.Options().addDelegate(delegate)
         model = Interpreter(loadModelFile(assetManager, assetsPath), options)
+
+        inputData = ByteBuffer.allocateDirect(inputShape[1] * inputShape[2] * inputShape[3] * bytesPerPoint)
+        inputData.order(ByteOrder.nativeOrder())
+        outputData = ByteBuffer.allocateDirect(outputShape[1] * outputShape[2] * outputShape[3] * bytesPerPoint)
+        outputData.order(ByteOrder.nativeOrder())
     }
 
     override fun process(originalImage: Bitmap): Pair<Bitmap, Long> {
+        val startProcess = System.currentTimeMillis()
         val originalHeight = originalImage.height
         val originalWidth = originalImage.width
 
         val scaledImage = Bitmap.createScaledBitmap(originalImage, inputShape[1], inputShape[2], false)
+        val imageArray = IntArray(inputShape[1] * inputShape[2])
+        scaledImage.getPixels(imageArray, 0, inputShape[2], 0, 0, inputShape[1], inputShape[2])
 
-        val input = Array(1) {
-            Array(inputShape[1]) { Array(inputShape[2]) { FloatArray(inputShape[3]) } }
-        }
-        val output = Array(1) {
-            Array(outputShape[1]) { Array(outputShape[2]) { FloatArray(outputShape[3]) } }
-        }
-
-        for (i in 0 until inputShape[1]) {
-            for (j in 0 until inputShape[2]) {
-                val pixel = scaledImage.getPixel(i, j)
-                input[0][i][j][0] = (Color.red(pixel).toFloat() - 128) / 128f
-                input[0][i][j][1] = (Color.green(pixel).toFloat() - 128) / 128f
-                input[0][i][j][2] = (Color.blue(pixel).toFloat() - 128) / 128f
-            }
+        inputData.rewind()
+        outputData.rewind()
+        for (i in imageArray.indices) {
+            val pixel = imageArray[i]
+            inputData.putFloat(((pixel shr 16 and 0xFF).toFloat() - imageMean) / imageStd)
+            inputData.putFloat(((pixel shr 8 and 0xFF).toFloat() - imageMean) / imageStd)
+            inputData.putFloat(((pixel and 0xFF).toFloat() - imageMean) / imageStd)
         }
 
         val start = System.currentTimeMillis()
-        model.run(input, output)
+        model.run(inputData, outputData)
         val end = System.currentTimeMillis()
 
         val scaledMask = Bitmap.createBitmap(outputShape[1], outputShape[2], Bitmap.Config.ARGB_8888)
-        for (x in 0 until outputShape[1]) {
-            for (y in 0 until outputShape[2]) {
+        for (y in 0 until outputShape[2]) {
+            for (x in 0 until outputShape[1]) {
                 var argMax = 0
+                var valMax = 0f
                 for (label in 0 until labelColors.size) {
-                    if (output[0][x][y][argMax] < output[0][x][y][label]) {
+                    val curVal = outputData.getFloat(
+                        (y * outputShape[2] * outputShape[3] + x * outputShape[3] + label) * bytesPerPoint
+                    )
+                    if (curVal > valMax) {
                         argMax = label
+                        valMax = curVal
                     }
                 }
                 scaledMask.setPixel(x, y, labelColors[argMax].second)
             }
         }
+        val finishProcess = System.currentTimeMillis()
+        Log.i(this.name, "pre and post processing took ${finishProcess - startProcess - (end - start)} ms")
         return Bitmap.createScaledBitmap(scaledMask, originalWidth, originalHeight, true) to (end - start)
     }
 

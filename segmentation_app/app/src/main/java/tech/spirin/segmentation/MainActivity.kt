@@ -5,17 +5,20 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import android.provider.MediaStore
+import android.support.v4.content.FileProvider
 import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.widget.*
 import tech.spirin.segmentation.dnn.DNN
+import tech.spirin.segmentation.dnn.DeepLabV3CPU
 import tech.spirin.segmentation.dnn.DeepLabV3GPU
+import java.io.File
 import java.io.IOException
+import java.text.SimpleDateFormat
 import java.util.*
-
-
 
 
 class MainActivity : AppCompatActivity() {
@@ -28,6 +31,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var spinner: Spinner
     private lateinit var timeTextView: TextView
 
+    // using for taking photo and save it to gallery
+    private var currentPhotoPath: String? = null
     private var currentImage: Bitmap? = null
 
     private val RESULT_GALLERY = 1
@@ -49,7 +54,7 @@ class MainActivity : AppCompatActivity() {
         spinner = findViewById(R.id.spinner)
         timeTextView = findViewById(R.id.time)
 
-        availableDNN = arrayOf(DeepLabV3GPU(this.assets))
+        availableDNN = arrayOf(DeepLabV3GPU(this.assets), DeepLabV3CPU(this.assets))
         availableDNN.map { it.initialize() }
 
         loadImageButton.setOnClickListener {
@@ -62,7 +67,7 @@ class MainActivity : AppCompatActivity() {
                 val selectedDNN = spinner.selectedItemPosition
                 val result = availableDNN[selectedDNN].process(currentImage!!)
                 processedImageView.setImageBitmap(result.first)
-                timeTextView.text = "${result.second} ms"
+                timeTextView.text = getString(R.string.time_measure, result.second)
                 val blendImage = blendImages(currentImage!!, result.first)
                 blendedImageView.setImageBitmap(blendImage)
             }
@@ -99,8 +104,30 @@ class MainActivity : AppCompatActivity() {
 
     private fun takePhotoFromCamera() {
         Log.i("Dialog", getString(R.string.capture_from_camera))
-        val cameraIntent = Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE)
-        startActivityForResult(cameraIntent, RESULT_CAMERA)
+        Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
+            // Ensure that there's a camera activity to handle the intent
+            takePictureIntent.resolveActivity(packageManager)?.also {
+                // Create the File where the photo should go
+                val photoFile: File? = try {
+                    createImageFile()
+                } catch (ex: IOException) {
+                    // Error occurred while creating the File
+                    ex.printStackTrace()
+                    Toast.makeText(this, "Error while taking photo", Toast.LENGTH_SHORT).show()
+                    null
+                }
+                // Continue only if the File was successfully created
+                photoFile?.also {
+                    val photoURI: Uri = FileProvider.getUriForFile(
+                        this,
+                        "com.example.android.fileprovider",
+                        it
+                    )
+                    takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
+                    startActivityForResult(takePictureIntent, RESULT_CAMERA)
+                }
+            }
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -112,21 +139,17 @@ class MainActivity : AppCompatActivity() {
         when (requestCode) {
             RESULT_CAMERA -> {
                 Log.d("Get image", "result for capture photo")
-                currentImage = data?.extras?.get("data") as Bitmap
+                val f = File(currentPhotoPath)
+                val contentUri = Uri.fromFile(f)
+                currentImage = MediaStore.Images.Media.getBitmap(this.contentResolver, contentUri)
                 setOriginalImage(currentImage!!)
-                val photoName = "${getString(R.string.app_name)}_${Calendar.getInstance().time}"
-                val photoDescription = "Photo from ${getString(R.string.app_name)} application"
-                val savedPhoto = MediaStore.Images.Media.insertImage(
-                    this.contentResolver, currentImage, photoName, photoDescription
-                )
-                Log.i("Camera", "Save image to ${Uri.parse(savedPhoto)}")
             }
             RESULT_GALLERY -> {
                 Log.d("Get image", "result for load from gallery")
                 if (data != null) {
-                    val contentURI = data.data
+                    val contentUri = data.data
                     try {
-                        currentImage = MediaStore.Images.Media.getBitmap(this.contentResolver, contentURI)
+                        currentImage = MediaStore.Images.Media.getBitmap(this.contentResolver, contentUri)
                         setOriginalImage(currentImage!!)
                     } catch (e: IOException) {
                         e.printStackTrace()
@@ -137,9 +160,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @Throws(IOException::class)
+    private fun createImageFile(): File {
+        // Create an image file name
+        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val storageDir: File? = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+        return File.createTempFile(
+            "segmentation_${timeStamp}_", /* prefix */
+            ".jpg", /* suffix */
+            storageDir /* directory */
+        ).apply {
+            currentPhotoPath = absolutePath
+        }
+    }
+
     private fun setOriginalImage(image: Bitmap) {
         originalImageView.setImageBitmap(image)
         processedImageView.setImageBitmap(null)
+        blendedImageView.setImageBitmap(null)
+        timeTextView.text = ""
     }
 
 }

@@ -2,7 +2,6 @@ package tech.spirin.segmentation.dnn
 
 import android.content.res.AssetManager
 import android.graphics.Bitmap
-import org.tensorflow.lite.Interpreter
 import java.io.FileInputStream
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
@@ -15,11 +14,7 @@ abstract class DNN(protected val assetManager: AssetManager) {
     abstract val inputShape: IntArray
     abstract val outputShape: IntArray
 
-    protected lateinit var model: Interpreter
-
-    open fun initialize() {
-        model = Interpreter(loadModelFile(assetManager, assetsPath))
-    }
+    open fun initialize() { }
 
     open fun process(originalImage: Bitmap) : Pair<Bitmap, Long> {
         return originalImage to 0
