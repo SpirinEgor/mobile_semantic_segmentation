@@ -24,6 +24,9 @@ class DeepLabV3GPU(assetManager: AssetManager) : DNN(assetManager) {
     private lateinit var inputData: ByteBuffer
     private lateinit var outputData: ByteBuffer
     private val bytesPerPoint = 4
+    private lateinit var scaledImage: Bitmap
+    private lateinit var imageArray: IntArray
+    private lateinit var scaledMask: Bitmap
 
     private val labelColors = arrayOf(
         "background" to Color.rgb(0, 0, 0),
@@ -58,6 +61,8 @@ class DeepLabV3GPU(assetManager: AssetManager) : DNN(assetManager) {
         inputData.order(ByteOrder.nativeOrder())
         outputData = ByteBuffer.allocateDirect(outputShape[1] * outputShape[2] * outputShape[3] * bytesPerPoint)
         outputData.order(ByteOrder.nativeOrder())
+
+        scaledMask = Bitmap.createBitmap(outputShape[1], outputShape[2], Bitmap.Config.ARGB_8888)
     }
 
     override fun process(originalImage: Bitmap): Pair<Bitmap, Long> {
@@ -65,8 +70,8 @@ class DeepLabV3GPU(assetManager: AssetManager) : DNN(assetManager) {
         val originalHeight = originalImage.height
         val originalWidth = originalImage.width
 
-        val scaledImage = Bitmap.createScaledBitmap(originalImage, inputShape[1], inputShape[2], false)
-        val imageArray = IntArray(inputShape[1] * inputShape[2])
+        scaledImage = Bitmap.createScaledBitmap(originalImage, inputShape[1], inputShape[2], false)
+        imageArray = IntArray(inputShape[1] * inputShape[2])
         scaledImage.getPixels(imageArray, 0, inputShape[2], 0, 0, inputShape[1], inputShape[2])
 
         inputData.rewind()
@@ -82,13 +87,15 @@ class DeepLabV3GPU(assetManager: AssetManager) : DNN(assetManager) {
         model.run(inputData, outputData)
         val end = System.currentTimeMillis()
 
-        val scaledMask = Bitmap.createBitmap(outputShape[1], outputShape[2], Bitmap.Config.ARGB_8888)
+        var argMax: Int
+        var valMax: Float
+        var curVal: Float
         for (y in 0 until outputShape[2]) {
             for (x in 0 until outputShape[1]) {
-                var argMax = 0
-                var valMax = 0f
+                argMax = 0
+                valMax = -1f
                 for (label in 0 until labelColors.size) {
-                    val curVal = outputData.getFloat(
+                    curVal = outputData.getFloat(
                         (y * outputShape[2] * outputShape[3] + x * outputShape[3] + label) * bytesPerPoint
                     )
                     if (curVal > valMax) {
@@ -101,7 +108,7 @@ class DeepLabV3GPU(assetManager: AssetManager) : DNN(assetManager) {
         }
         val finishProcess = System.currentTimeMillis()
         Log.i(this.name, "pre and post processing took ${finishProcess - startProcess - (end - start)} ms")
-        return Bitmap.createScaledBitmap(scaledMask, originalWidth, originalHeight, true) to (end - start)
+        return Bitmap.createScaledBitmap(scaledMask, originalWidth, originalHeight, false) to (end - start)
     }
 
 }

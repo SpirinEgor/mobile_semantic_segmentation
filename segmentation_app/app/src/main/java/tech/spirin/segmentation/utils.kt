@@ -4,7 +4,6 @@ import android.Manifest
 import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.util.Log
 import android.widget.Toast
@@ -13,7 +12,6 @@ import com.karumi.dexter.MultiplePermissionsReport
 import com.karumi.dexter.PermissionToken
 import com.karumi.dexter.listener.PermissionRequest
 import com.karumi.dexter.listener.multi.MultiplePermissionsListener
-import java.nio.IntBuffer
 
 
 // Listener for dexter, check granted permissions
@@ -60,5 +58,3 @@ fun blendImages(background: Bitmap, foreground: Bitmap): Bitmap {
     canvas.drawBitmap(foreground, 0f, 0f, paint)
     return result
 }
-
-fun mixColors(in1: Int, in2: Int): Int = (in1 + in2) / 2

@@ -3,6 +3,7 @@ package tech.spirin.segmentation
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -40,6 +41,10 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var availableDNN: Array<DNN>
 
+    // asset images
+    private lateinit var assetsImages: Array<String>
+    private lateinit var assetsAdapter: SimpleAdapter
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -57,6 +62,22 @@ class MainActivity : AppCompatActivity() {
         availableDNN = arrayOf(DeepLabV3GPU(this.assets), DeepLabV3CPU(this.assets))
         availableDNN.map { it.initialize() }
 
+        assetsImages = assets.list("images")!!
+            .filter { !it.endsWith(".png") }
+            .toTypedArray()
+        val data = arrayListOf<HashMap<String, Any>>()
+        assetsImages.forEach {
+            val classes = it.split("_")
+            val cur = hashMapOf(
+                "image" to resources.getIdentifier(it, "drawable", "tech.spirin.segmentation"),
+                "name" to classes.slice(0 until classes.size - 2).joinToString("\n")
+            )
+            data.add(cur)
+        }
+        val from = arrayOf("image", "name")
+        val to = intArrayOf(R.id.dialog_image_view, R.id.dialog_image_name)
+        assetsAdapter = SimpleAdapter(this, data, R.layout.image_dialog, from, to)
+
         loadImageButton.setOnClickListener {
             showSelectImageDialog()
         }
@@ -67,9 +88,8 @@ class MainActivity : AppCompatActivity() {
                 val selectedDNN = spinner.selectedItemPosition
                 val result = availableDNN[selectedDNN].process(currentImage!!)
                 processedImageView.setImageBitmap(result.first)
+                blendedImageView.setImageBitmap(blendImages(currentImage!!, result.first))
                 timeTextView.text = getString(R.string.time_measure, result.second)
-                val blendImage = blendImages(currentImage!!, result.first)
-                blendedImageView.setImageBitmap(blendImage)
             }
         }
 
@@ -85,12 +105,14 @@ class MainActivity : AppCompatActivity() {
         dialog.setTitle(getString(R.string.choose_image_source))
         val dialogItems = arrayOf(
             getString(R.string.select_from_gallery),
-            getString(R.string.capture_from_camera)
+            getString(R.string.capture_from_camera),
+            getString(R.string.use_preload_image)
         )
         dialog.setItems(dialogItems) { _, which ->
             when (which) {
                 0 -> choosePhotoFromGallery()
                 1 -> takePhotoFromCamera()
+                2 -> loadFromAssets()
             }
         }
         dialog.show()
@@ -128,6 +150,17 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun loadFromAssets() {
+        val dialog = AlertDialog.Builder(this)
+        dialog.setTitle(getString(R.string.choose_image_source))
+        dialog.setAdapter(assetsAdapter) { _, which ->
+            val ims = assets.open("images/${assetsImages[which]}/image.png")
+            currentImage = BitmapFactory.decodeStream(ims)
+            setOriginalImage(currentImage!!)
+        }
+        dialog.show()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
