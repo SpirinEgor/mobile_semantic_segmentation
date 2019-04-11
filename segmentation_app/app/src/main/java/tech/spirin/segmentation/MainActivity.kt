@@ -12,6 +12,7 @@ import android.support.v4.content.FileProvider
 import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
+import android.view.View
 import android.widget.*
 import tech.spirin.segmentation.dnn.DNN
 import tech.spirin.segmentation.dnn.DeepLabV3CPU
@@ -25,12 +26,13 @@ import java.util.*
 class MainActivity : AppCompatActivity() {
 
     private lateinit var loadImageButton: Button
-    private lateinit var processImageButton: Button
+    private lateinit var benchmarkButton: Button
     private lateinit var originalImageView: ImageView
     private lateinit var processedImageView: ImageView
     private lateinit var blendedImageView: ImageView
+    private lateinit var description: TextView
+    private lateinit var scrollView: ScrollView
     private lateinit var spinner: Spinner
-    private lateinit var timeTextView: TextView
 
     // using for taking photo and save it to gallery
     private var currentPhotoPath: String? = null
@@ -38,6 +40,7 @@ class MainActivity : AppCompatActivity() {
 
     private val RESULT_GALLERY = 1
     private val RESULT_CAMERA = 2
+    private val RESULT_ASSETS = 3
 
     private lateinit var availableDNN: Array<DNN>
 
@@ -52,12 +55,13 @@ class MainActivity : AppCompatActivity() {
         requestMultiplePermissions(this)
 
         loadImageButton = findViewById(R.id.load_image)
-        processImageButton = findViewById(R.id.process_image)
+        benchmarkButton = findViewById(R.id.benchmark)
         originalImageView = findViewById(R.id.original_image)
         processedImageView = findViewById(R.id.processed_image)
         blendedImageView = findViewById(R.id.blended_image)
+        description = findViewById(R.id.description)
+        scrollView = findViewById(R.id.scroll_view)
         spinner = findViewById(R.id.spinner)
-        timeTextView = findViewById(R.id.time)
 
         availableDNN = arrayOf(DeepLabV3GPU(this.assets), DeepLabV3CPU(this.assets))
         availableDNN.map { it.initialize() }
@@ -81,16 +85,10 @@ class MainActivity : AppCompatActivity() {
         loadImageButton.setOnClickListener {
             showSelectImageDialog()
         }
-        processImageButton.setOnClickListener {
-            if (currentImage == null) {
-                Toast.makeText(this, "Select image before process it", Toast.LENGTH_SHORT).show()
-            } else {
-                val selectedDNN = spinner.selectedItemPosition
-                val result = availableDNN[selectedDNN].process(currentImage!!)
-                processedImageView.setImageBitmap(result.first)
-                blendedImageView.setImageBitmap(blendImages(currentImage!!, result.first))
-                timeTextView.text = getString(R.string.time_measure, result.second)
-            }
+
+        benchmarkButton.setOnClickListener {
+            description.text = "Measure time and IoU for all preloaded images...\n (TODO)"
+            scrollView.visibility = View.INVISIBLE
         }
 
         val spinnerAdapter = ArrayAdapter(
@@ -101,21 +99,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSelectImageDialog() {
-        val dialog = AlertDialog.Builder(this)
-        dialog.setTitle(getString(R.string.choose_image_source))
+        val dialogBuilder = AlertDialog.Builder(this)
+        dialogBuilder.setTitle(getString(R.string.choose_image_source))
         val dialogItems = arrayOf(
             getString(R.string.select_from_gallery),
             getString(R.string.capture_from_camera),
             getString(R.string.use_preload_image)
         )
-        dialog.setItems(dialogItems) { _, which ->
+        dialogBuilder.setItems(dialogItems) { _ , which ->
             when (which) {
                 0 -> choosePhotoFromGallery()
                 1 -> takePhotoFromCamera()
                 2 -> loadFromAssets()
             }
         }
-        dialog.show()
+        dialogBuilder.show()
     }
 
     private fun choosePhotoFromGallery() {
@@ -156,9 +154,8 @@ class MainActivity : AppCompatActivity() {
         val dialog = AlertDialog.Builder(this)
         dialog.setTitle(getString(R.string.choose_image_source))
         dialog.setAdapter(assetsAdapter) { _, which ->
-            val ims = assets.open("images/${assetsImages[which]}/image.png")
-            currentImage = BitmapFactory.decodeStream(ims)
-            setOriginalImage(currentImage!!)
+            val intent = Intent().putExtra("assetId", which)
+            onActivityResult(RESULT_ASSETS, Activity.RESULT_OK, intent)
         }
         dialog.show()
     }
@@ -175,7 +172,6 @@ class MainActivity : AppCompatActivity() {
                 val f = File(currentPhotoPath)
                 val contentUri = Uri.fromFile(f)
                 currentImage = MediaStore.Images.Media.getBitmap(this.contentResolver, contentUri)
-                setOriginalImage(currentImage!!)
             }
             RESULT_GALLERY -> {
                 Log.d("Get image", "result for load from gallery")
@@ -183,13 +179,30 @@ class MainActivity : AppCompatActivity() {
                     val contentUri = data.data
                     try {
                         currentImage = MediaStore.Images.Media.getBitmap(this.contentResolver, contentUri)
-                        setOriginalImage(currentImage!!)
                     } catch (e: IOException) {
                         e.printStackTrace()
                         Toast.makeText(this, "Error while loading from gallery", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
+            RESULT_ASSETS -> {
+                if (data != null) {
+                    val assetId = data.getIntExtra("assetId", 0)
+                    val ims = assets.open("images/${assetsImages[assetId]}/image.png")
+                    currentImage = BitmapFactory.decodeStream(ims)
+                }
+            }
+        }
+        if (currentImage == null) {
+            Toast.makeText(this, "Select image before segment it", Toast.LENGTH_SHORT).show()
+        } else {
+            val selectedDNN = spinner.selectedItemPosition
+            val result = availableDNN[selectedDNN].process(currentImage!!)
+            scrollView.visibility = View.VISIBLE
+            originalImageView.setImageBitmap(currentImage)
+            processedImageView.setImageBitmap(result.first)
+            blendedImageView.setImageBitmap(blendImages(currentImage!!, result.first))
+            description.text = getString(R.string.time_measure, result.second)
         }
     }
 
@@ -205,13 +218,6 @@ class MainActivity : AppCompatActivity() {
         ).apply {
             currentPhotoPath = absolutePath
         }
-    }
-
-    private fun setOriginalImage(image: Bitmap) {
-        originalImageView.setImageBitmap(image)
-        processedImageView.setImageBitmap(null)
-        blendedImageView.setImageBitmap(null)
-        timeTextView.text = ""
     }
 
 }

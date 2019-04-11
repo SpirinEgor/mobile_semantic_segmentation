@@ -7,7 +7,8 @@
     <string name="capture_from_camera">Capture photo from camera</string>
     <string name="process_image">process image</string>
     <string name="processed_image">processed image</string>
-    <string name="time_measure">model work in %1$d ms</string>
+    <string name="time_measure">Elapsed time is %1$d ms</string>
     <string name="use_preload_image">Select from preloaded images</string>
     <string name="thumbnail_for_asset_image">thumbnail for asset image</string>
+    <string name="run_benchmark">Run benchmark</string>
 </resources>
