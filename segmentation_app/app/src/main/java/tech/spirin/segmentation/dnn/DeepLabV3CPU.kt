@@ -10,8 +10,7 @@ import kotlin.math.roundToInt
 
 class DeepLabV3CPU(assetManager: AssetManager) : DNN(assetManager) {
 
-    //    override val assetsPath = "DeepLab_513_CPU/frozen_inference_graph.pb"
-    override val assetsPath = "DeepLab_513_CPU/graph_dailystudio.pb"
+    override val assetsPath = "DeepLab_513_CPU/DeepLab_V3_513_CPU.pb"
     override val name = "DeepLab v3 513 CPU"
     override val inputShape = intArrayOf(1, 513, 513, 3)
     override val outputShape = intArrayOf(1, 513, 513)
@@ -20,30 +19,6 @@ class DeepLabV3CPU(assetManager: AssetManager) : DNN(assetManager) {
 
     private lateinit var inputData: ByteArray
     private lateinit var outputData: IntArray
-
-    private val labelColors = arrayOf(
-        "background" to Color.rgb(0, 0, 0),
-        "aeroplane" to Color.rgb(128, 0, 0),
-        "bicycle" to Color.rgb(0, 128, 0),
-        "bird" to Color.rgb(128, 128, 0),
-        "boat" to Color.rgb(0, 0, 128),
-        "bottle" to Color.rgb(128, 0, 128),
-        "bus" to Color.rgb(0, 128, 128),
-        "car" to Color.rgb(128, 128, 128),
-        "cat" to Color.rgb(64, 0, 0),
-        "chair" to Color.rgb(192, 0, 0),
-        "cow" to Color.rgb(64, 128, 0),
-        "diningtable" to Color.rgb(192, 128, 0),
-        "dog" to Color.rgb(64, 0, 128),
-        "horse" to Color.rgb(192, 0, 128),
-        "motorbike" to Color.rgb(64, 128, 128),
-        "person" to Color.rgb(192, 128, 128),
-        "pottedplant" to Color.rgb(0, 64, 0),
-        "sheep" to Color.rgb(128, 64, 0),
-        "sofa" to Color.rgb(0, 192, 0),
-        "train" to Color.rgb(128, 192, 0),
-        "tv" to Color.rgb(0, 64, 128)
-    )
 
     override fun initialize() {
         model = TensorFlowInferenceInterface(assetManager, assetsPath)
