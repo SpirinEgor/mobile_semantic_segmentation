@@ -18,6 +18,10 @@ class ENetCPU(assetManager: AssetManager) : DNN(assetManager) {
     override val inputShape = intArrayOf(256, 256, 3)
     override val outputShape = intArrayOf(256, 256, 21)
 
+    private val imageMean = floatArrayOf(0.485f, 0.456f, 0.406f)
+    private val imageStd = floatArrayOf(0.229f, 0.224f, 0.225f)
+    private val imageMaxPixel = 255f
+
     private lateinit var model: TensorFlowInferenceInterface
 
     private lateinit var inputData: FloatArray
@@ -47,16 +51,16 @@ class ENetCPU(assetManager: AssetManager) : DNN(assetManager) {
 
         for (i in imageArray.indices) {
             val pixel = imageArray[i]
-            inputData[3 * i] = (pixel shr 16 and 0xFF).toFloat()
-            inputData[3 * i + 1] = (pixel shr 8 and 0xFF).toFloat()
-            inputData[3 * i + 2] = (pixel and 0xFF).toFloat()
+            inputData[3 * i] = processPixelChannel((pixel shr 16 and 0xFF).toFloat(), 0)
+            inputData[3 * i + 1] = processPixelChannel((pixel shr 8 and 0xFF).toFloat(), 1)
+            inputData[3 * i + 2] = processPixelChannel((pixel and 0xFF).toFloat(), 2)
         }
 
         model.feed("image", inputData, 1, 256, 256, 3)
         val start = System.currentTimeMillis()
-        model.run(arrayOf("predictions/ResizeBilinear"))
+        model.run(arrayOf("output/truediv"))
         val end = System.currentTimeMillis()
-        model.fetch("predictions/ResizeBilinear", outputData)
+        model.fetch("output/truediv", outputData)
 
         var argMax: Int
         var valMax: Float
@@ -79,6 +83,13 @@ class ENetCPU(assetManager: AssetManager) : DNN(assetManager) {
         Log.i(this.name, "pre and post processing took ${finishProcess - startProcess - (end - start)} ms")
         val fixTime = ((end - start).toDouble() * Random.nextDouble(0.75, 0.9)).toLong()
         return Bitmap.createScaledBitmap(scaledMask, originalWidth, originalHeight, true) to fixTime
+    }
+
+    private fun processPixelChannel(channelValue: Float, channelNumber: Int): Float {
+        var newChannelValue = channelValue / imageMaxPixel
+        newChannelValue -= imageMean[channelNumber]
+        newChannelValue /= imageStd[channelNumber]
+        return newChannelValue
     }
 
 }

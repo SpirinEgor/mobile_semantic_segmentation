@@ -4,15 +4,13 @@ import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.util.Log
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface
-import org.tensorflow.lite.Interpreter
-import org.tensorflow.lite.experimental.GpuDelegate
 
 class UNetCPU(assetManager: AssetManager) : DNN(assetManager) {
 
-    override val assetsPath = "UNet_256/UNet_256x256.pb"
-    override val name = "UNet 256 CPU"
-    override val inputShape = intArrayOf(256, 256, 3)
-    override val outputShape = intArrayOf(256, 256, 21)
+    override val assetsPath = "UNet_224/UNet_224x224.pb"
+    override val name = "UNet 224 CPU"
+    override val inputShape = intArrayOf(224, 224, 3)
+    override val outputShape = intArrayOf(224, 224, 21)
 
     private val imageMean = floatArrayOf(0.485f, 0.456f, 0.406f)
     private val imageStd = floatArrayOf(0.229f, 0.224f, 0.225f)
@@ -52,11 +50,11 @@ class UNetCPU(assetManager: AssetManager) : DNN(assetManager) {
             inputData[3 * i + 2] = processPixelChannel((pixel and 0xFF).toFloat(), 2)
         }
 
-        model.feed("input_1", inputData, 1, 256, 256, 3)
+        model.feed("input_1", inputData, 1, 224, 224, 3)
         val start = System.currentTimeMillis()
-        model.run(arrayOf("softmax/truediv"))
+        model.run(arrayOf("predictions/ResizeBilinear"))
         val end = System.currentTimeMillis()
-        model.fetch("softmax/truediv", outputData)
+        model.fetch("predictions/ResizeBilinear", outputData)
 
         var argMax: Int
         var valMax: Float

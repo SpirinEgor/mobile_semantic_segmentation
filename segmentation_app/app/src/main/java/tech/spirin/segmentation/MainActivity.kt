@@ -64,8 +64,8 @@ class MainActivity : AppCompatActivity() {
         spinner = findViewById(R.id.spinner)
 
         availableDNN = arrayOf(
-            DeepLabV3GPU(this.assets), DeepLabV3CPU(this.assets), ICNetCPU(this.assets),
-            ENetCPU(this.assets), UNetCPU(this.assets)
+            DeepLabV3GPU(this.assets), DeepLabV3CPU(this.assets), ICNetCPU(this.assets), UNetCPU(this.assets)
+//            ENetCPU(this.assets)
         )
         availableDNN.map { it.initialize() }
 
