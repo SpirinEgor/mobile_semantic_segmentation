@@ -5,6 +5,11 @@ Compare different neural network architecture for semantic segmentation problem 
 Android application written in Kotlin and using tensorflow-mobile and tensorflow-lite.  
 With this application you can load image and segmentate it with choosen Deep Neural Network or run benchmarks for compare average working time.
 
+<p align="middle">
+  <img src="/example_1.jpg" width="200" />
+  <img src="/example_2.jpg" width="200" />
+</p>
+
 ## Deep Neural Network
 There are four networks, in this table you can find information about quality and size:
 
