@@ -10,12 +10,16 @@ else
 fi
 echo "Download to $WORK_PATH/"
 
-wget -c http://images.cocodataset.org/zips/train2017.zip -O $WORK_PATH/train2017.zip
-unzip $WORK_PATH/train2017.zip -d $WORK_PATH
-wget -c http://images.cocodataset.org/zips/val2017.zip -O $WORK_PATH/val2017.zip
-unzip $WORK_PATH/val2017.zip -d $WORK_PATH
-wget -c http://images.cocodataset.org/annotations/annotations_trainval2017.zip -O $WORK_PATH/annotations.zip
-unzip $WORK_PATH/annotations.zip -d $WORK_PATH
+wget -c http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar -O $WORK_PATH/VOC2012.tar
+tar -xvf $WORK_PATH/VOC2012.tar -C $WORK_PATH
+
+# wget -c http://images.cocodataset.org/zips/train2017.zip -O $WORK_PATH/train2017.zip
+# unzip $WORK_PATH/train2017.zip -d $WORK_PATH
+# wget -c http://images.cocodataset.org/zips/val2017.zip -O $WORK_PATH/val2017.zip
+# unzip $WORK_PATH/val2017.zip -d $WORK_PATH
+# wget -c http://images.cocodataset.org/annotations/annotations_trainval2017.zip -O $WORK_PATH/annotations.zip
+# unzip $WORK_PATH/annotations.zip -d $WORK_PATH
+
 
 if [[ $WORK_PATH != "data" ]]; then
     ln -s $WORK_PATH "data"
